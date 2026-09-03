@@ -25,9 +25,8 @@ description: 从 SQLite 博客数据库（如 Flask 博客）提取文章为分�
 
 1. 按分类创建目录（目录名经安全字符处理）
 2. 每篇文章导出为一个 Markdown 文件，命名格式 `序号_标题.md`
-3. 文件头部添加 YAML front matter（title、category、created_at、view_count、hidden）
-4. 正文保留数据库中的原始 Markdown/HTML 内容
-5. 文章按分类、置顶、排序字段排序
+3. 正文保留数据库中的原始 Markdown/HTML 内容（如原文不以标题开头则自动补 `# 标题`）
+4. 文章按分类、置顶、排序字段排序
 
 ### Step 3: 整理图片
 
@@ -37,11 +36,26 @@ description: 从 SQLite 博客数据库（如 Flask 博客）提取文章为分�
 4. 更新 Markdown 中的图片引用路径为本地相对路径（如 `![alt](image.png)`）
 5. 报告孤儿图片（本地存在但未被任何文章引用的图片）
 
+### Step 4: 规范化表格
+
+自动处理导出的 Markdown 文件中的表格格式问题：
+
+1. **检测**连续表格行（`|` 开头结尾的段落），允许表格内含最多 1 个空行
+2. **缺表头分隔符**的表格自动补齐（如 2 列数据行但没有 `| --- | --- |` 时自动添加）
+3. **统一分隔符格式**为 `| --- | --- | --- |`（默认左对齐，3 个破折号）
+4. 跳过代码块、front matter、ASCII 图等非表格区域
+
+可通过独立脚本单独运行：
+
+```bash
+python scripts/normalize_tables.py <path>   # path 可为文件或目录
+```
+
 ## Usage
 
 ### 一键导出（推荐）
 
-使用 `scripts/export_blog.py` 脚本一次性完成文章导出和图片整理：
+使用 `scripts/export_blog.py` 脚本一次性完成文章导出、图片整理、表格规范化：
 
 ```bash
 python scripts/export_blog.py data.db --output . --images .
@@ -52,6 +66,16 @@ python scripts/export_blog.py data.db --output . --images .
 - `--output / -o`: 输出目录，分类目录直接创建在此目录下（默认当前目录）
 - `--images / -i`: 搜索图片文件的目录列表（默认当前目录）
 
+### 独立表格规范化
+
+如果已有 Markdown 文件需要单独规范化表格：
+
+```bash
+python scripts/normalize_tables.py <文件或目录>
+```
+
+无参数时处理当前目录所有 `.md` 文件（跳过 README.md 和 `.codebuddy/`）。
+
 ### 手动步骤
 
 如果需要分步执行或自定义处理：
@@ -59,6 +83,7 @@ python scripts/export_blog.py data.db --output . --images .
 1. **探查数据库结构**：先读取数据库表结构和字段，确认 blog 表和字段映射
 2. **导出文章**：执行导出脚本的文章导出部分
 3. **整理图片**：确认图片文件位置后，执行图片整理部分
+4. **规范化表格**：运行 `normalize_tables.py` 处理表格格式问题
 
 ## Notes
 

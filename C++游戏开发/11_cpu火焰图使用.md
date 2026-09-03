@@ -1,10 +1,3 @@
----
-title: cpu火焰图使用
-category: C++游戏开发
-created_at: 2026-04-26 12:31:09
-view_count: 17
----
-
 ## cpu火焰图使用
 
 在linux上我们需要对开发的程序进行调优，主要的是分析cpu占用，可以使用top、htop、pstack相关指令，但是火焰图可以很方便的看到cpu消耗在哪里。

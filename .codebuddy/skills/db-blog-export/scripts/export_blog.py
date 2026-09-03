@@ -20,6 +20,8 @@ import argparse
 import shutil
 from collections import OrderedDict
 
+from normalize_tables import normalize_file as normalize_md_file
+
 # ---- 工具函数 ----
 
 INVALID_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -166,12 +168,6 @@ def export_articles(db_path, output_dir):
     select_cols = [id_col, title_col, text_col]
     if cat_col:
         select_cols.append(cat_col)
-    if created_col:
-        select_cols.append(created_col)
-    if view_col:
-        select_cols.append(view_col)
-    if hidden_col:
-        select_cols.append(hidden_col)
 
     cur.execute(f"SELECT {', '.join(select_cols)} FROM {table} ORDER BY {order_clause}")
     rows = cur.fetchall()
@@ -188,14 +184,9 @@ def export_articles(db_path, output_dir):
         text = row_dict.get(text_col, "") or ""
         cat = row_dict.get(cat_col, "未分类") if cat_col else "未分类"
         cat = cat or "未分类"
-        created = row_dict.get(created_col, "")
-        views = row_dict.get(view_col, 0)
-        is_hidden = bool(row_dict.get(hidden_col, 0)) if hidden_col else False
 
         groups.setdefault(cat, []).append({
-            "id": article_id, "title": title, "text": text,
-            "category": cat, "created_at": created,
-            "view_count": views, "hidden": is_hidden,
+            "id": article_id, "title": title, "text": text, "category": cat,
         })
 
     # 排序分类
@@ -221,24 +212,14 @@ def export_articles(db_path, output_dir):
 
             fp = os.path.join(cat_dir, fname)
 
-            # YAML front matter
-            header = "---\n"
-            header += f"title: {item['title']}\n"
-            header += f"category: {cat}\n"
-            if item["created_at"]:
-                header += f"created_at: {item['created_at']}\n"
-            if item["view_count"]:
-                header += f"view_count: {item['view_count']}\n"
-            if item["hidden"]:
-                header += "hidden: true\n"
-            header += "---\n\n"
-
+            # 如原文不以标题开头，则补上 # 标题
             content = item["text"]
+            prefix = ""
             if content and not content.lstrip().startswith("#"):
-                header += f"# {item['title']}\n\n"
+                prefix = f"# {item['title']}\n\n"
 
             with open(fp, "w", encoding="utf-8") as f:
-                f.write(header)
+                f.write(prefix)
                 f.write(content)
 
             # 提取图片引用
@@ -358,12 +339,14 @@ def main():
         for f in orphan:
             print(f"  - {f}")
 
-    # 清理源目录中已使用的图片（可选，源目录为输出目录时不删除）
-    output_abs = os.path.abspath(args.output)
-    used_in_output = set()
+    print("\n" + "=" * 60)
+    print("步骤 3: 规范化表格")
+    print("=" * 60)
+    norm_count = 0
     for info in article_infos:
-        for filename, _ in info["image_refs"]:
-            used_in_output.add(filename)
+        if normalize_md_file(info["md_path"]):
+            norm_count += 1
+    print(f"\n共规范化 {norm_count} 个文件的表格格式")
 
     print("\n完成!")
 
