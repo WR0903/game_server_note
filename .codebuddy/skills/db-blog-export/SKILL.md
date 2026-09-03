@@ -51,11 +51,20 @@ description: 从 SQLite 博客数据库（如 Flask 博客）提取文章为分�
 python scripts/normalize_tables.py <path>   # path 可为文件或目录
 ```
 
+### Step 5: 生成 README.md
+
+自动生成带目录索引的 `README.md`：
+
+1. 按分类汇总文章列表，每个条目带可点击的相对路径链接
+2. 自动读取输出目录下的 `.gitignore`，排除其中列出的目录（如 `梦幻西游三维版/`、`生活模拟经营/` 等）
+3. 文件名中的空格自动 URL 编码为 `%20`
+4. 显示名自动去掉序号前缀（如 `01_标题` → `标题`）
+
 ## Usage
 
 ### 一键导出（推荐）
 
-使用 `scripts/export_blog.py` 脚本一次性完成文章导出、图片整理、表格规范化：
+使用 `scripts/export_blog.py` 脚本一次性完成文章导出、图片整理、表格规范化、生成 README：
 
 ```bash
 python scripts/export_blog.py data.db --output . --images .
@@ -84,6 +93,7 @@ python scripts/normalize_tables.py <文件或目录>
 2. **导出文章**：执行导出脚本的文章导出部分
 3. **整理图片**：确认图片文件位置后，执行图片整理部分
 4. **规范化表格**：运行 `normalize_tables.py` 处理表格格式问题
+5. **生成 README**：运行 `export_blog.py` 自动生成目录索引
 
 ## Notes
 

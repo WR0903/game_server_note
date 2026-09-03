@@ -7,10 +7,10 @@
 
 功能:
     1. 自动探查数据库，识别 blog 表及分类/图片引用
-    2. 按分类建目录，每篇文章导出为一个 Markdown 文件（含 YAML front matter）
-    3. 扫描文章中的图片引用（支持 /static/uploads/xxx 及相对路径）
-    4. 将本地匹配的图片文件复制到对应文章目录
-    5. 更新 Markdown 中的图片引用为本地相对路径
+    2. 按分类建目录，每篇文章导出为一个 Markdown 文件
+    3. 扫描文章中的图片引用，将本地图片复制到对应文章目录并更新引用
+    4. 规范化 Markdown 表格格式
+    5. 生成 README.md 目录索引（自动排除 .gitignore 中的目录）
 """
 
 import sqlite3
@@ -311,6 +311,66 @@ def organize_images(article_infos, image_dirs):
     return processed, orphan
 
 
+def read_gitignore(output_dir):
+    """读取 .gitignore，返回应忽略的目录名集合"""
+    gitignore_path = os.path.join(output_dir, ".gitignore")
+    ignored = set()
+    if not os.path.isfile(gitignore_path):
+        return ignored
+    with open(gitignore_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            # 只处理目录模式（以 / 结尾）
+            if line.endswith("/"):
+                ignored.add(line.rstrip("/"))
+            # 也处理不带 / 的目录名
+            elif "/" not in line and "." not in line:
+                ignored.add(line)
+    return ignored
+
+
+def generate_readme(output_dir, article_infos):
+    """生成 README.md 目录索引，排除 .gitignore 中的目录"""
+    ignored_dirs = read_gitignore(output_dir)
+
+    # 按分类收集文章
+    cat_articles = OrderedDict()
+    for info in article_infos:
+        safe_cat = os.path.basename(info["cat_dir"])
+        if safe_cat in ignored_dirs:
+            continue
+        cat_articles.setdefault(safe_cat, []).append(info)
+
+    lines = ["# 博客文章归档\n"]
+
+    # 顶部分类索引
+    lines.append("## 目录\n")
+    for cat in cat_articles:
+        anchor = cat.lower().replace(" ", "-")
+        lines.append(f"- [{cat}](#{anchor})")
+    lines.append("")
+
+    # 各分类文章列表
+    for cat, articles in cat_articles.items():
+        lines.append(f"### {cat}\n")
+        for info in articles:
+            rel_path = os.path.relpath(info["md_path"], output_dir)
+            # 处理文件名中的空格：URL 编码
+            rel_path_encoded = rel_path.replace(" ", "%20")
+            # 显示名：去掉序号前缀
+            display = os.path.basename(info["md_path"]).replace(".md", "")
+            display = re.sub(r"^\d+_", "", display)
+            lines.append(f"- [{display}]({rel_path_encoded})")
+        lines.append("")
+
+    readme_path = os.path.join(output_dir, "README.md")
+    with open(readme_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    print(f"  已生成 {readme_path}（排除了 .gitignore 中的 {len(ignored_dirs)} 个目录）")
+
+
 def main():
     parser = argparse.ArgumentParser(description="从 SQLite 博客数据库导出文章为 Markdown，并整理图片")
     parser.add_argument("db_path", help="SQLite 数据库文件路径")
@@ -347,6 +407,11 @@ def main():
         if normalize_md_file(info["md_path"]):
             norm_count += 1
     print(f"\n共规范化 {norm_count} 个文件的表格格式")
+
+    print("\n" + "=" * 60)
+    print("步骤 4: 生成 README.md")
+    print("=" * 60)
+    generate_readme(args.output, article_infos)
 
     print("\n完成!")
 
