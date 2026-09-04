@@ -4,14 +4,6 @@ https://wangranhit.pythonanywhere.com/
 
 ## 目录
 
-- [AI](#ai)
-- [C++](#c)
-- [C++游戏开发](#c游戏开发)
-- [python](#python)
-- [unity3d](#unity3d)
-- [数据库](#数据库)
-- [未分类](#未分类)
-
 ### AI
 
 - [ai运维发布机器人](AI/01_ai运维发布机器人.md)
